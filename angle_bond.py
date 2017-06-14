@@ -36,8 +36,10 @@ def plotBonds_Angles(outFilename,allThing,atomsi):
     for i in range(num)[1:]:
         histogram = zip(*np.histogram(allThing[i], bins=50))
         name = convertLabel(atomsi[i-1])
-        np.savetxt(name+".hist", histogram)
+        gaussian, coefficients = fit_gaussian(histogram)
+        np.savetxt(name+".hist", histogram, gaussian)
         np.savetxt(name+".dat", allThing[i])
+        np.savetxt(name+".coeff", coefficients)
 
 def convertLabel(xs):
     ''' 
@@ -73,11 +75,12 @@ def get_angles(frames,atoms):
     return angle
 
 def fit_gaussian(data, p0=[1,2,1]):
-    hist, bin_edges = data[:,0],data[:,1]  
+    hist, bin_edges = data[:,1],data[:,0] 
     bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
     coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
     # Get the fitted curve
     hist_fit = gauss(bin_centres, *coeff)
+    return hist_fit, coeff
 
 # Define model function to be used to fit to the data above:
 def gauss(x, *p):
