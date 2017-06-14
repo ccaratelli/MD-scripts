@@ -73,14 +73,20 @@ def get_angles(frames,atoms):
         angle[frame] = bend_angle(frames[frame,atoms])[0]
     return angle
 
-def fit_gaussian(data, p0=[1,2,1]):
+def fit_gaussian(data, p0=[3000,2,0.1]):
     hist, bin_edges = data[:,1],data[:,0] 
 #    bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
 #    coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
     coeff, var_matrix = curve_fit(gauss, bin_edges, hist, p0=p0)
     # Get the fitted curve
     hist_fit = gauss(bin_centres, *coeff)
-    return hist_fit, coeff
+    # get k of the oscillator that generates this distribution and append it to the coefficient list
+    temp = 351
+    kb = 1.38064852E-23
+    JtoHartree = 2.293710449e17
+    k = (temp*kb*JtoHartree)/coeff[2]
+    allcoeff = np.append(coeff,k)
+    return hist_fit, allcoeff
 
 def gauss(x, *p):
     '''
