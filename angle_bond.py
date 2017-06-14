@@ -17,12 +17,10 @@ def main(file_name):
     atomsi = [[170,70,9],[170,70,167],[70,170]]  #add this in the command line
 #    atomsi = [[165,68,5],[165,68,267],[165,68]]  #add this in the command line
     atoms = [ list(np.array(a)-1) for a in atomsi ]
-    print atomsi
 
     bonds  = map(partial(get_bonds, frames), filter(lambda at: len(at) == 2, atoms))
     angles = map(partial(get_angles, frames), filter(lambda at: len(at) == 3, atoms))
     
-    print bonds, angles
     numbers = [np.arange(frames.shape[0])+1]
 
     allThing = np.concatenate((numbers, bonds, angles))
@@ -35,14 +33,13 @@ def plotBonds_Angles(outFilename,allThing,atomsi):
     '''
     (num,steps) = allThing.shape
     for i in range(num)[1:]:
-#        histogram = zip(*np.histogram(allThing[i], bins=50))
         hist, bin_edges = np.histogram(allThing[i], bins=50)
         bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
-        histogram = np.stack(bin_centres, hist)
-
+        histogram = np.stack((bin_centres, hist))
         name = convertLabel(atomsi[i-1])
         gaussian, coefficients = fit_gaussian(histogram)
-        np.savetxt(name+".hist", (bin_centres, hist, gaussian))
+        printall = np.stack((bin_centres, hist, gaussian), axis =1 )
+        np.savetxt(name+".hist", printall)
         np.savetxt(name+".dat", allThing[i])
         np.savetxt(name+".coeff", coefficients)
 
@@ -79,11 +76,12 @@ def get_angles(frames,atoms):
         angle[frame] = bend_angle(frames[frame,atoms])[0]
     return angle
 
-def fit_gaussian(data, p0=[3000,2,0.1]):
+def fit_gaussian(data, p0=[3000,2,1]):
     '''
     takes histogram and bins of same shape
     '''
-    hist, bins = data[:,1],data[:,0] 
+    bins, hist = data[0],data[1] 
+    print hist.shape, bins.shape, data.shape
     coeff, var_matrix = curve_fit(gauss, bins, hist, p0=p0)
     # Get the fitted curve
     hist_fit = gauss(bins, *coeff)
@@ -100,7 +98,7 @@ def gauss(x, *p):
     Define a gaussian function to fit data. A = 1/np.sqrt(2*np.pi*sigma**2)
     '''
     A, mu, sigma = p
-    return A*numpy.exp(-(x-mu)**2/(2.*sigma**2))
+    return A*np.exp(-(x-mu)**2/(2.*sigma**2))
     #return (1/np.sqrt(2*np.pi*sigma**2))*numpy.exp(-(x-mu)**2/(2.*sigma**2))
     
 if __name__ == "__main__":
