@@ -1,70 +1,63 @@
 import numpy as np
 import molmod as md
 import argparse
-#from molmod.io.xyz import XYZReader
 from functools import partial
 from molmod.io.xyz import XYZFile
 from molmod.ic import bend_angle
 from molmod.ic import bond_length
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-def main(file_name):
-#    xyz = XYZReader(file_name)
-#    mols = [[m for m in f ] for f in xyz ]
-#    frames = [j for i,j in mols]
-#    tensor = np.asarray(frames)
-#    number_of_steps = tensor.shape[0]
-#    number_of_atoms = tensor.shape[1]
-# # initialization of array
-#    bonds = np.empty(number_of_steps,number_of_atoms,number_of_atoms)
-#    angles = np.empty(number_of_steps)    
-#    for i in range(number_of_steps): 
-#        for j in range(number_of_atoms):
-#        bond[i]  = bond_length(tensor[i,[atom1,atom2])[0]
-#        angle[i] = bend_angle(tensor[i,[atom1,atom2,atom3])[0]
+from scipy.optimize import curve_fit
 
+def main(file_name):
     xyz_file = XYZFile(file_name)
     outputName = "bond_angles.dat"
     outFilenameGraph = "bond_anglesGraph"
     frames = xyz_file.geometries
-#    atomsi = [[170,70,9],[170,70,167],[70,170]]  #add this in the command line
-    atomsi = [[165,68,5],[165,68,267],[165,68]]  #add this in the command line
+    atomsi = [[170,70,9],[170,70,167],[70,170]]  #add this in the command line
+#    atomsi = [[165,68,5],[165,68,267],[165,68]]  #add this in the command line
     atoms = [ list(np.array(a)-1) for a in atomsi ]
 
     bonds  = map(partial(get_bonds, frames), filter(lambda at: len(at) == 2, atoms))
     angles = map(partial(get_angles, frames), filter(lambda at: len(at) == 3, atoms))
+    
     numbers = [np.arange(frames.shape[0])+1]
+
     allThing = np.concatenate((numbers, bonds, angles))
     np.savetxt(outputName,np.transpose(allThing))
     plotBonds_Angles(outFilenameGraph,allThing,atomsi)
-#    list_of_quantitities = filter(lambda at: len(at) == 2 and len(at) == 3, atoms)
-    
-#    for i in atoms:
-#        if len(atoms[i]) == 2:
-#           bond = get_bonds(frames,atoms[i])
-#            list_of_quantities.append(bond)
-#        if len(atoms[i]) == 3:
-#            angle = get_angles(frames,atoms[i])
-#            list_of_quantities.append(angle)
+
 def plotBonds_Angles(outFilename,allThing,atomsi):
+    ''' 
+    Save files with data as a function of time and histogram
+    '''
     (num,steps) = allThing.shape
     for i in range(num)[1:]:
-        tupleZ = zip(*np.histogram(allThing[i], bins=50))
+        hist, bin_edges = np.histogram(allThing[i], bins=50)
+        bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+        histogram = np.stack((bin_centres, hist))
         name = convertLabel(atomsi[i-1])
-        np.savetxt(name, tupleZ)
+        gaussian, coefficients = fit_gaussian(histogram)
+        printall = np.stack((bin_centres, hist, gaussian), axis =1 )
+        np.savetxt(name+".hist", printall)
+        np.savetxt(name+".dat", allThing[i])
+        np.savetxt(name+".coeff", coefficients)
 
 def convertLabel(xs):
+    ''' 
+    generates a label with the list of atoms  [70, 170] --> Bond_70_170
+    '''
     if len(xs) == 3:
        label = "Angle_"
     else:
        label = "Bond_"
     lab = '_'.join(str(x) for x in xs)
-    return label+lab+".hist"
+    return label + lab
 
 def get_bonds(frames,atoms): 
-    """
+    '''
     This functions wants an array with the frames, and a list with a pair of atoms
-    """
+    '''
     number_of_steps = frames.shape[0]
     number_of_atoms = frames.shape[1]
     distance = np.empty(number_of_steps)
@@ -73,9 +66,9 @@ def get_bonds(frames,atoms):
     return distance
 
 def get_angles(frames,atoms): 
-    """
+    '''
     This functions wants an array with the frames, and a list with a triple of atoms
-    """
+    '''
     number_of_steps = frames.shape[0]
     number_of_atoms = frames.shape[1]
     angle = np.empty(number_of_steps)
@@ -83,6 +76,30 @@ def get_angles(frames,atoms):
         angle[frame] = bend_angle(frames[frame,atoms])[0]
     return angle
 
+def fit_gaussian(data, p0=[3000,2,1]):
+    '''
+    takes histogram and bins of same shape
+    '''
+    bins, hist = data[0],data[1] 
+    print hist.shape, bins.shape, data.shape
+    coeff, var_matrix = curve_fit(gauss, bins, hist, p0=p0)
+    # Get the fitted curve
+    hist_fit = gauss(bins, *coeff)
+    # get k of the oscillator that generates this distribution and append it to the coefficient list
+    temp = 351
+    kb = 1.38064852E-23
+    JtoHartree = 2.293710449e17
+    k = (temp*kb*JtoHartree)/coeff[2]
+    allcoeff = np.append(coeff,k)
+    return hist_fit, allcoeff
+
+def gauss(x, *p):
+    '''
+    Define a gaussian function to fit data. A = 1/np.sqrt(2*np.pi*sigma**2)
+    '''
+    A, mu, sigma = p
+    return A*np.exp(-(x-mu)**2/(2.*sigma**2))
+    #return (1/np.sqrt(2*np.pi*sigma**2))*numpy.exp(-(x-mu)**2/(2.*sigma**2))
     
 if __name__ == "__main__":
     msg = " angle_bond -p <path/to/trajectory>"
