@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 def main(file_name):
-
     xyz_file = XYZFile(file_name)
     outputName = "bond_angles.dat"
     outFilenameGraph = "bond_anglesGraph"
@@ -76,18 +75,20 @@ def get_angles(frames,atoms):
 
 def fit_gaussian(data, p0=[1,2,1]):
     hist, bin_edges = data[:,1],data[:,0] 
-    bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
-    coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
+#    bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+#    coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
+    coeff, var_matrix = curve_fit(gauss, bin_edges, hist, p0=p0)
     # Get the fitted curve
     hist_fit = gauss(bin_centres, *coeff)
     return hist_fit, coeff
 
-# Define model function to be used to fit to the data above:
 def gauss(x, *p):
+    '''
+    Define a gaussian function to fit data. A = 1/np.sqrt(2*np.pi*sigma**2)
+    '''
     A, mu, sigma = p
     return A*numpy.exp(-(x-mu)**2/(2.*sigma**2))
     #return (1/np.sqrt(2*np.pi*sigma**2))*numpy.exp(-(x-mu)**2/(2.*sigma**2))
-    
     
 if __name__ == "__main__":
     msg = " angle_bond -p <path/to/trajectory>"
