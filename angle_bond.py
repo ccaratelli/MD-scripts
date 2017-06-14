@@ -17,10 +17,12 @@ def main(file_name):
     atomsi = [[170,70,9],[170,70,167],[70,170]]  #add this in the command line
 #    atomsi = [[165,68,5],[165,68,267],[165,68]]  #add this in the command line
     atoms = [ list(np.array(a)-1) for a in atomsi ]
+    print atomsi
 
     bonds  = map(partial(get_bonds, frames), filter(lambda at: len(at) == 2, atoms))
     angles = map(partial(get_angles, frames), filter(lambda at: len(at) == 3, atoms))
-
+    
+    print bonds, angles
     numbers = [np.arange(frames.shape[0])+1]
 
     allThing = np.concatenate((numbers, bonds, angles))
@@ -33,10 +35,14 @@ def plotBonds_Angles(outFilename,allThing,atomsi):
     '''
     (num,steps) = allThing.shape
     for i in range(num)[1:]:
-        histogram = zip(*np.histogram(allThing[i], bins=50))
+#        histogram = zip(*np.histogram(allThing[i], bins=50))
+        hist, bin_edges = np.histogram(allThing[i], bins=50)
+        bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+        histogram = np.stack(bin_centres, hist)
+
         name = convertLabel(atomsi[i-1])
         gaussian, coefficients = fit_gaussian(histogram)
-        np.savetxt(name+".hist", histogram, gaussian)
+        np.savetxt(name+".hist", (bin_centres, hist, gaussian))
         np.savetxt(name+".dat", allThing[i])
         np.savetxt(name+".coeff", coefficients)
 
@@ -49,7 +55,7 @@ def convertLabel(xs):
     else:
        label = "Bond_"
     lab = '_'.join(str(x) for x in xs)
-    return label+lab
+    return label + lab
 
 def get_bonds(frames,atoms): 
     '''
@@ -74,12 +80,13 @@ def get_angles(frames,atoms):
     return angle
 
 def fit_gaussian(data, p0=[3000,2,0.1]):
-    hist, bin_edges = data[:,1],data[:,0] 
-#    bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
-#    coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
-    coeff, var_matrix = curve_fit(gauss, bin_edges, hist, p0=p0)
+    '''
+    takes histogram and bins of same shape
+    '''
+    hist, bins = data[:,1],data[:,0] 
+    coeff, var_matrix = curve_fit(gauss, bins, hist, p0=p0)
     # Get the fitted curve
-    hist_fit = gauss(bin_centres, *coeff)
+    hist_fit = gauss(bins, *coeff)
     # get k of the oscillator that generates this distribution and append it to the coefficient list
     temp = 351
     kb = 1.38064852E-23
