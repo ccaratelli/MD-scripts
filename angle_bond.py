@@ -29,24 +29,31 @@ def main(file_name):
     plotBonds_Angles(outFilenameGraph,allThing,atomsi)
 
 def plotBonds_Angles(outFilename,allThing,atomsi):
+    ''' 
+    Save files with data as a function of time and histogram
+    '''
     (num,steps) = allThing.shape
     for i in range(num)[1:]:
         histogram = zip(*np.histogram(allThing[i], bins=50))
         name = convertLabel(atomsi[i-1])
-        np.savetxt(name, histogram)
+        np.savetxt(name+".hist", histogram)
+        np.savetxt(name+".dat", allThing[i])
 
 def convertLabel(xs):
+    ''' 
+    generates a label with the list of atoms  [70, 170] --> Bond_70_170
+    '''
     if len(xs) == 3:
        label = "Angle_"
     else:
        label = "Bond_"
     lab = '_'.join(str(x) for x in xs)
-    return label+lab+".hist"
+    return label+lab
 
 def get_bonds(frames,atoms): 
-    """
+    '''
     This functions wants an array with the frames, and a list with a pair of atoms
-    """
+    '''
     number_of_steps = frames.shape[0]
     number_of_atoms = frames.shape[1]
     distance = np.empty(number_of_steps)
@@ -55,9 +62,9 @@ def get_bonds(frames,atoms):
     return distance
 
 def get_angles(frames,atoms): 
-    """
+    '''
     This functions wants an array with the frames, and a list with a triple of atoms
-    """
+    '''
     number_of_steps = frames.shape[0]
     number_of_atoms = frames.shape[1]
     angle = np.empty(number_of_steps)
@@ -65,22 +72,19 @@ def get_angles(frames,atoms):
         angle[frame] = bend_angle(frames[frame,atoms])[0]
     return angle
 
-def fit_gaussian(data, p0=[2,1]):
+def fit_gaussian(data, p0=[1,2,1]):
     hist, bin_edges = data[:,0],data[:,1]  
     bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
     coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0)
     # Get the fitted curve
     hist_fit = gauss(bin_centres, *coeff)
 
-
-
-def gauss(x, mu, sigma):
-    return (1/np.sqrt(2*np.pi*sigma**2))*numpy.exp(-(x-mu)**2/(2.*sigma**2))
+# Define model function to be used to fit to the data above:
+def gauss(x, *p):
+    A, mu, sigma = p
+    return A*numpy.exp(-(x-mu)**2/(2.*sigma**2))
+    #return (1/np.sqrt(2*np.pi*sigma**2))*numpy.exp(-(x-mu)**2/(2.*sigma**2))
     
-
-
-
-
     
 if __name__ == "__main__":
     msg = " angle_bond -p <path/to/trajectory>"
