@@ -94,7 +94,7 @@ def fit_gaussian(data, p0=[2,0.1]):
     JtoHartree = 2.293710449e17
     k = (temp*kb*JtoHartree)/coeff[1]
     allcoeff = np.append(coeff,k)
-    print "k = " k
+    print('k = {0} Hartree/Bohr**2,  r0 = {1} Bohr'.format(k, mu))
     return hist_fit, allcoeff
 
 def gauss(x, *p):
