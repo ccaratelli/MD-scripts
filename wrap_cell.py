@@ -7,9 +7,8 @@ import numpy as np
 def main(file_name):
     xyz_file = XYZFile(file_name)
     frames = xyz_file.geometries
-    n_atoms = xyz_file.geometries.shape[1]
-    n_steps = xyz_file.geometries.shape[0]
-    titles = xyz_file.titles
+#    titles = xyz_file.titles
+
     # Unit cell, decide how to make this general 
     matrix=np.array([\
          [1.4731497044857509E+01, 3.2189795740722255E-02, 4.5577626559295564E-02],\
@@ -18,7 +17,7 @@ def main(file_name):
     cell = UnitCell(matrix) 
     frac = UnitCell.to_fractional(cell, frames)
     decimals = np.modf(frac)[0]
-    frac_wrapped = np.where(frac < 0, 1 + frac, frac)
+    frac_wrapped = np.where(decimals < 0, 1 + decimals, decimals)
     cart_wrapped = UnitCell.to_cartesian(cell, frac_wrapped)
 
     xyz_file.geometries = cart_wrapped
