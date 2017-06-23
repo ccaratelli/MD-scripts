@@ -1,10 +1,10 @@
 #!/usr/bin/python
 from molmod.io.xyz import XYZFile
 from molmod.unit_cells import UnitCell
+import argparse
 import numpy as np
 
-def main(file_name)
-
+def main(file_name):
     xyz_file = XYZFile(file_name)
     frames = xyz_file.geometries
     n_atoms = xyz_file.geometries.shape[1]
@@ -19,7 +19,7 @@ def main(file_name)
     frac = UnitCell.to_fractional(cell, frames)
     decimals = np.modf(frac)[0]
     frac_wrapped = np.where(frac < 0, 1 + frac, frac)
-    cart_wrapped = molmod.unit_cells.UnitCell.to_cartesian(cell, frac_wrapped)
+    cart_wrapped = UnitCell.to_cartesian(cell, frac_wrapped)
 
     xyz_file.geometries = cart_wrapped
     xyz_file.write_to_file(file_name.rsplit(".",1)[0]+"_wrapped.xyz")
