@@ -11,17 +11,16 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 #from scipy.stats import norm
 
-def main(file_name):
+def main(file_name)#, start_step, end_step):
     xyz_file = XYZFile(file_name)
     outputName = "bond_angles.dat"
     outFilenameGraph = "bond_anglesGraph"
     frames = xyz_file.geometries
-    atomsi = [[170,70,9],[170,70,167],[70,170],[165,68,5],[165,68,267],[165,68]]  #add this in the command line
+    atomsi = [[70,170],[165,68],[170,70,9],[170,70,167],[165,68,5],[165,68,267]]  #add this in the command line
     atoms = [ list(np.array(a)-1) for a in atomsi ]
 
     bonds  = map(partial(get_bonds, frames), filter(lambda at: len(at) == 2, atoms))
     angles = map(partial(get_angles, frames), filter(lambda at: len(at) == 3, atoms))
-    
     numbers = [np.arange(frames.shape[0])+1]
 
     allThing = np.concatenate((numbers, bonds, angles))
@@ -34,6 +33,7 @@ def plotBonds_Angles(outFilename,allThing,atomsi):
     '''
     (num,steps) = allThing.shape
     for i in range(num)[1:]:
+        # Define the histogram and shift the bins to have data on the centres
         hist, bin_edges = np.histogram(allThing[i], bins=50,density=True)
         bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
         histogram = np.stack((bin_centres, hist))
@@ -65,18 +65,18 @@ def get_bonds(frames,atoms):
     number_of_atoms = frames.shape[1]
     distance = np.empty(number_of_steps)
     for frame in range(number_of_steps):
-        distance[frame] = bond_length(frames[frame,atoms])[0]
+        distance[frame] = bond_length(frames[frame,atoms])[0]*0.529177
     return distance
 
 def get_angles(frames,atoms): 
     '''
-    This functions wants an array with the frames, and a list with a triple of atoms
+    This functions wants an array with the frames, and a list with a triplet of atoms
     '''
     number_of_steps = frames.shape[0]
     number_of_atoms = frames.shape[1]
     angle = np.empty(number_of_steps)
     for frame in range(number_of_steps):
-        angle[frame] = bend_angle(frames[frame,atoms])[0]
+        angle[frame] = bend_angle(frames[frame,atoms])[0]#*(180./np.pi)
     return angle
 
 def fit_gaussian(data, p0=[2,0.1]):
@@ -111,7 +111,10 @@ if __name__ == "__main__":
     msg = " angle_bond -p <path/to/trajectory>"
     parser = argparse.ArgumentParser(description=msg)
     parser.add_argument('-p', required=True, help='path to the xyz trajectory')
+    parser.add_argument('-st', required=False, help='starting time of the simulation')
+    parser.add_argument('-et', required=False, help='ending time of the simulation')
 #    parser.add_argument('-a', required=False, help='give three values for an angle')
 #    parser.add_argument('-c', required=False, help='give two values for a bond length')
     args = parser.parse_args()
     main(args.p)
+#    main(args.p, args.st, args.et)
