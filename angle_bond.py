@@ -2,6 +2,7 @@
 import numpy as np
 import argparse
 from functools import partial
+import molmod
 from molmod.io.xyz import XYZFile
 from molmod.ic import bend_angle
 from molmod.ic import bond_length
@@ -17,7 +18,8 @@ def main(file_name, start_step, end_step):
     outFilenameGraph = "bond_anglesGraph"
     frames = xyz_file.geometries[start_step:end_step]
 
-    atomsi = [[70,170],[165,68],[170,70,9],[170,70,167],[165,68,5],[165,68,267]]  #add this in the command line
+    #atomsi = [[70,170],[165,68],[170,70,9],[170,70,167],[165,68,5],[165,68,267]]  #add this in the command line
+    atomsi = [[1,2],[1,3],[2,1,3]]  #add this in the command line
     atoms = [ list(np.array(a)-1) for a in atomsi ]
 
     bonds  = map(partial(get_bonds, frames), filter(lambda at: len(at) == 2, atoms))
@@ -39,10 +41,9 @@ def plotBonds_Angles(outFilename, allThing, atomsi):
         bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
         histogram = np.stack((bin_centres, hist))
         name = convertLabel(atomsi[i-1])
-        gaussian, coefficients = fit_gaussian(histogram)
-#        mu, std = norm.fit(allThing[i])
-#        gaussian2 = norm.pdf(bin_centres, mu, std)
-        printall = np.stack((bin_centres, hist, gaussian), axis=1 )
+        gaussian, probdistr, coefficients = fit_gaussian(histogram)
+        
+        printall = np.stack((bin_centres, hist, gaussian, probdistr), axis=1 )
         np.savetxt(name+".hist", printall)
         np.savetxt(name+".dat", allThing[i])
         np.savetxt(name+".coeff", coefficients)
@@ -87,17 +88,18 @@ def fit_gaussian(data, p0=[2,0.1]):
     bins, hist = data[0],data[1] 
     coeff, var_matrix = curve_fit(gauss, bins, hist, p0=p0)
     # Get the fitted curve
-    hist_fit = gauss(bins, *coeff)
+    gauss_fit = gauss(bins, *coeff)
     # get k of the oscillator that generates this distribution and append it to the coefficient list
     # sqrt(k/2pi kb T)
     temp = 351
-    kb = 1.38064852E-23
-    JtoHartree = 2.293710449e17
-    kb_Hartree = 3.1668114E-6
-    k = (temp*kb_Hartree)/coeff[1]
-#    k = (temp*kb*JtoHartree)/coeff[1]
+    kb = molmod.constants.boltzmann  #kb in hartree
+    k = (temp*kb)/(coeff[1]**2)
     allcoeff = np.append(coeff,k)
-    return hist_fit, allcoeff
+    allcoeff = np.append(allcoeff,k/2)
+    #check if k replicates the real distribution
+    coeff_distr = k, coeff[0], temp
+    distr_fit = distrfun(bins, *coeff_distr)    
+    return gauss_fit, distr_fit, allcoeff
 
 def gauss(x, *p):
     '''
@@ -105,6 +107,14 @@ def gauss(x, *p):
     '''
     mu, sigma = p
     return (1/(np.sqrt(2*np.pi)*sigma))*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+def distrfun(x, *p):
+    '''
+    Define the probability distribution function given K and T
+    '''
+    k, x0, temp = p
+    kb = molmod.constants.boltzmann
+    return(1/(np.sqrt(2*np.pi*kb*temp/k))*np.exp(-(k/(2*kb*temp))*(x-x0)**2))
     
 if __name__ == "__main__":
     msg = " angle_bond -p <path/to/trajectory>"

@@ -18,8 +18,21 @@ def main(file_name):
     matrix *= angstrom
     cell = UnitCell(matrix) 
     frac = UnitCell.to_fractional(cell, frames)
-    decimals = np.modf(frac)[0]
-    frac_wrapped = np.where(decimals < 0, 1 + decimals, decimals)
+
+    xmin = np.min(frac[:,:,0])
+    ymin = np.min(frac[:,:,1])
+    zmin = np.min(frac[:,:,2])
+    frac[:,:,0] -= -0.5#xmin
+    frac[:,:,1] -= -0.5#ymin
+    frac[:,:,2] -= -0.5#zmin
+    decimals = np.modf(frac)[0] 
+#    decimals[:,:,0] += xmin
+#    decimals[:,:,1] += ymin
+#    decimals[:,:,2] += zmin
+    frac_wrapped = np.where(decimals < 0, 1 + decimals, decimals) 
+#    frac_wrapped[:,:,0] += xmin
+#    frac_wrapped[:,:,1] += ymin
+#    frac_wrapped[:,:,2] += zmin
     cart_wrapped = UnitCell.to_cartesian(cell, frac_wrapped)
 
     xyz_file.geometries = cart_wrapped
