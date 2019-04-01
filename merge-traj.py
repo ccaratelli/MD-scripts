@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import numpy as np
 from molmod.io.xyz import XYZFile
 import argparse
@@ -21,12 +22,12 @@ def main(file1_name, file2_name, start_step, end_step, trim):
                 xyz_file3.symbols =  np.concatenate((xyz_file1.symbols, xyz_file2.symbols), axis=0)
                 xyz_file3.write_to_file('coord-ptcv.xyz')
             else:
-                print('% does not exist' %file2_name)
+                print('%s does not exist' %(file2_name))
         else:
             xyz_file3.geometries = geo1[::trim]
             xyz_file3.write_to_file('coord-reduced.xyz')
     else:
-        print( 'does not exist')
+        print('%s does not exist' %(file1_name))
 
 
 if __name__ == "__main__":
