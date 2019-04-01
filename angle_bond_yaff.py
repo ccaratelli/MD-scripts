@@ -6,29 +6,27 @@ import molmod
 from molmod.io.xyz import XYZFile
 from molmod.ic import bend_angle
 from molmod.ic import bond_length
-#import matplotlib as mpl
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.constants import physical_constants
-import json
 #from scipy.stats import norm
 
 def main(file_name, start_step, end_step):
     xyz_file = XYZFile(file_name)
     outputName = "bond_angles.dat"
-    outFilenameGraph = "bond_anglesGraph"
+#    outFilenameGraph = "bond_anglesGraph"
     frames = xyz_file.geometries[start_step:end_step]
 
-    #atomsi = [[16,222],[222,16,9],[222,16,11],[222,16,33]]  # oxo-site_A
-    #atomsi = [[50,221],[221,50,7],[221,50,5],[221,50,60]]  # oxo-site_B
-    #atomsi = [[16,222],[50,221],[56,203],[61,180],[13,193],[26,220],[52,219],[31,216],[222,16,9],[222,16,11]]  # oxo-site_B
-    #atomsi = [[70,170],[165,68],[170,70,9],[170,70,167],[165,68,5],[165,68,267]]  # site_A
-    #atomsi = [[264,263],[265,263],[264,263,262],[264,263,265]]  # methanol-framework
-    #atomsi = [[377,378],[377,379],[378,377,379],[378,377,169]]  # methanol - depr
-    #atomsi = [[351,352],[359,360],[57,351,352],[37,359,360]]  # methanol - reference
-    #atomsi = [[69,168],[69,285],[168,242],[242,243],[69,168,242]]  # mtd-deprotonation site_A 
-    atomsi = json.load(open('atoms.txt','r'))
-    atoms = [ list(np.array(a)-1) for a in atomsi ]
+    #atomsi = [[70,170],[165,68],[170,70,9],[170,70,167],[165,68,5],[165,68,267]]  #add this in the command line
+    #atomsi = [[1,2],[1,3],[4,5],[4,6],[7,8],[7,9],[10,11],[10,12],[2,1,3],[5,4,6],[8,7,9],[11,10,12]]  #add this in the command line
+    #for i in frames:
+    #    system = yaff.System(numbers=xyz_file.numbers, pos=frames[i])
+    #    sytem.detect_bonds()
+    #    indexes = system.get_indexes('8&=2%1')
+
+    atomsi = [[1,2],[1,3],[2,1,3],[2,1,4]]  #add this in the command line
+    atoms = [list(np.array(a)-1) for a in atomsi]
 
     bonds  = map(partial(get_bonds, frames), filter(lambda at: len(at) == 2, atoms))
     angles = map(partial(get_angles, frames), filter(lambda at: len(at) == 3, atoms))
@@ -53,7 +51,7 @@ def plotBonds_Angles(outFilename, allThing, atomsi):
         
         printall = np.stack((bin_centres, hist, gaussian, probdistr), axis=1 )
         np.savetxt(name+".hist", printall)
-        np.savetxt(name+".dat", allThing[i]*0.529177)
+        np.savetxt(name+".dat", allThing[i])
         np.savetxt(name+".coeff", coefficients)
 
 def convertLabel(xs):
@@ -99,11 +97,11 @@ def fit_gaussian(data, p0=[2,0.1]):
     gauss_fit = gauss(bins, *coeff)
     # get k of the oscillator that generates this distribution and append it to the coefficient list
     # sqrt(k/2pi kb T)
-    temp = 330
+    temp = 351
     kb = molmod.constants.boltzmann  #kb in hartree
     k = (temp*kb)/(coeff[1]**2)
     allcoeff = np.append(coeff,k)
-    #allcoeff = np.append(allcoeff,k/2)
+    allcoeff = np.append(allcoeff,k/2)
     #check if k replicates the real distribution
     coeff_distr = k, coeff[0], temp
     distr_fit = distrfun(bins, *coeff_distr)    
