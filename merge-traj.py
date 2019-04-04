@@ -6,13 +6,14 @@ import os
 
 def main(file1_name, file2_name, start_step, end_step, trim, unitcell_name):
     """
-    This script takes one or two xyz trajectories and combines them, trims them
-    and adds unit cell parameters in the title lines so that PLUMED can process it
+    Takes a xyz trajectory and can combine it with the ptcv trajectory, trim it
+    and add unit cell parameters in the title lines so that PLUMED can process it
     if the unit cell is variable
+
     """
     if os.path.isfile(file1_name):
         xyz_file1 = XYZFile(file1_name)
-        xyz_file3 = XYZFile(file1_name)
+        xyz_file3 = xyz_file1 
         geo1= xyz_file1.geometries[start_step:end_step]
 
         if file2_name != None:
@@ -34,27 +35,25 @@ def main(file1_name, file2_name, start_step, end_step, trim, unitcell_name):
         else:
             xyz_file3.geometries = geo1[::trim]
             if unitcell_name != None:
-                unitcellmerge(xyz_file3, start_step, end_step, trim, unitcell_name)
-            else:
-                xyz_file3.write_to_file('coord-reduced.xyz')
+                xyz_file3 = unitcellmerge(xyz_file3, start_step, end_step, trim, unitcell_name)
+            xyz_file3.write_to_file('coord-processed.xyz')
     else:
         print('%s does not exist' %(file1_name))
 
 def unitcellmerge(xyz_file, start_step, end_step, trim, unitcell_name):
-    '''
-    Takes a md-CELLFILE.cell in cp2k format
-    a xyz trajectory object in molmod 
-    returns comment lines with cell parameters
-    '''
+    """
+    Takes a md-CELLFILE.cell in cp2k format and a xyz trajectory object from molmod     
+    returns a trajectory with cell parameters in the comment line for each step
+    """
     with open(unitcell_name,'r') as f:
-        output = f.readlines()[start_step:end_step:trim]
+        output = f.readlines()[start_step:end_step]
     cell = [x.split()[2:11] for x in output if not x.startswith('#')]
-    cell2 = [' '.join(x) for x in cell]
+    cell2 = [' '.join(x) for x in cell[::trim]]
     xyz_file.titles = cell2
-    xyz_file.write_to_file('coord-cell.xyz') #xyz output file
+    return xyz_file
 
 if __name__ == "__main__":
-    msg = " angle_bond -i <path/to/trajectory> -tr trim -st start_time -et end_time"
+    msg = "merge-traj.py -i <path/to/trajectory> -tr <trim (print every n steps)> -st <start frame> -et <end frame> -uc <path/to/cp3k-unit-cell>"
     parser = argparse.ArgumentParser(description=msg)
     parser.add_argument('-i', required=False, default='mof-pos-1.xyz', help='path to the xyz trajectory of file 1')
     parser.add_argument('-p', required=False, default=None, help='path to the xyz trajectory of file 2')
