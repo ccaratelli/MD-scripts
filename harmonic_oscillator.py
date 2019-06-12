@@ -3,14 +3,15 @@ import scipy
 import matplotlib.pyplot as plt
 
 
-
 def histogram(A,x):
-    ''' p(A) is the probability distribution of x when
+    """ 
+    p(A) is the probability distribution of x when
     x(t) = A cos(wt) , with w = sqrt(k/m)
     solution of the harmonic oscillator with amplitude A
     A is proportional to the total energy.
     E = 1/2 k A^2
-    A = sqrt(2E/k)'''
+    A = sqrt(2E/k)
+    """
     return 1/(np.pi*np.sqrt(1-(x/A)**2))
 
 def main()

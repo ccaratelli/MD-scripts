@@ -1,15 +1,13 @@
 #!/usr/bin/python
 import numpy as np
 import argparse
+import matplotlib.pyplot as plt
 from functools import partial
-import molmod
+from molmod.constants import boltzmann
 from molmod.io.xyz import XYZFile
 from molmod.ic import bend_angle
 from molmod.ic import bond_length
-#import matplotlib as mpl
-import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from scipy.constants import physical_constants
 import json
 #from scipy.stats import norm
 
@@ -19,14 +17,6 @@ def main(file_name, start_step, end_step):
     outFilenameGraph = "bond_anglesGraph"
     frames = xyz_file.geometries[start_step:end_step]
 
-    #atomsi = [[16,222],[222,16,9],[222,16,11],[222,16,33]]  # oxo-site_A
-    #atomsi = [[50,221],[221,50,7],[221,50,5],[221,50,60]]  # oxo-site_B
-    #atomsi = [[16,222],[50,221],[56,203],[61,180],[13,193],[26,220],[52,219],[31,216],[222,16,9],[222,16,11]]  # oxo-site_B
-    #atomsi = [[70,170],[165,68],[170,70,9],[170,70,167],[165,68,5],[165,68,267]]  # site_A
-    #atomsi = [[264,263],[265,263],[264,263,262],[264,263,265]]  # methanol-framework
-    #atomsi = [[377,378],[377,379],[378,377,379],[378,377,169]]  # methanol - depr
-    #atomsi = [[351,352],[359,360],[57,351,352],[37,359,360]]  # methanol - reference
-    #atomsi = [[69,168],[69,285],[168,242],[242,243],[69,168,242]]  # mtd-deprotonation site_A 
     atomsi = json.load(open('atoms.txt','r'))
     atoms = [ list(np.array(a)-1) for a in atomsi ]
 
@@ -100,7 +90,7 @@ def fit_gaussian(data, p0=[2,0.1]):
     # get k of the oscillator that generates this distribution and append it to the coefficient list
     # sqrt(k/2pi kb T)
     temp = 330
-    kb = molmod.constants.boltzmann  #kb in hartree
+    kb = boltzmann  #kb in hartree
     k = (temp*kb)/(coeff[1]**2)
     allcoeff = np.append(coeff,k)
     #allcoeff = np.append(allcoeff,k/2)
@@ -121,7 +111,7 @@ def distrfun(x, *p):
     Define the probability distribution function given K and T
     '''
     k, x0, temp = p
-    kb = molmod.constants.boltzmann
+    kb = boltzmann
     return(1/(np.sqrt(2*np.pi*kb*temp/k))*np.exp(-(k/(2*kb*temp))*(x-x0)**2))
     
 if __name__ == "__main__":
@@ -130,7 +120,5 @@ if __name__ == "__main__":
     parser.add_argument('-p', required=True, help='path to the xyz trajectory')
     parser.add_argument('-st', required=False, default=0, type=int, help='starting time of the simulation (default=0)')
     parser.add_argument('-et', required=False, default=-1, type=int, help='ending time of the simulation')
-#    parser.add_argument('-a', required=False, help='give three values for an angle')
-#    parser.add_argument('-c', required=False, help='give two values for a bond length')
     args = parser.parse_args()
     main(args.p, args.st, args.et)
