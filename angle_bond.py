@@ -37,24 +37,26 @@ def main(file_name, start_step, end_step, temp):
     if bonds:
         for i, colvar in enumerate(bonds):
                 all_distr, coefficients = generate_histogram(colvar, temp)
-                name = convertLabel(atoms_input[i - 1])
+                name = convert_label(atoms_input[i - 1])
                 np.savetxt(name + ".hist", all_distr)
-                np.savetxt(name + ".dat", colvar)
-                np.savetxt(name + ".coeff", coefficients)
+                np.savetxt(name + ".dat", np.stack((time, colvar)).transpose())
+                np.savetxt(name + ".coeff", coefficients, fmt='%1.3f')
         #np.savetxt("all_bonds.dat", np.vstack((time, np.stack(bonds))).transpose())
-        labels = [convertLabel(i) for i in atoms_input if len(i) == 2]
+
+        labels = [convert_label(i) for i in atoms_input if len(i) == 2]
         all_bonds = pd.DataFrame(data=np.stack(bonds).transpose(), index=time, columns=labels)
         all_bonds.to_csv("all_bonds.dat", sep='\t')
 
     if angles:
         for i, colvar in enumerate(angles):
                 all_distr, coefficients = generate_histogram(colvar, temp)
-                name = convertLabel(atoms_input[i - 1])
+                name = convert_label(atoms_input[i - 1])
                 np.savetxt(name + ".hist", all_distr)
-                np.savetxt(name + ".dat", colvar)
-                np.savetxt(name + ".coeff", coefficients)
+                np.savetxt(name + ".dat", np.stack((time, colvar)).transpose())
+                np.savetxt(name + ".coeff", coefficients, fmt='%1.3f')
         #np.savetxt("all_angles.dat", np.vstack((time, np.stack(angles))).transpose())
-        labels = [convertLabel(i) for i in atoms_input if len(i) == 3]
+
+        labels = [convert_label(i) for i in atoms_input if len(i) == 3]
         all_bonds = pd.DataFrame(data=np.stack(angles).transpose(), index=time, columns=labels)
         all_bonds.to_csv("all_bonds.dat", sep='\t')
 
@@ -69,14 +71,14 @@ def generate_histogram(colvar, temp):
     return all_distr, coefficients
 
 
-def convertLabel(colvar):
+def convert_label(colvar):
     '''
-    generates a label with the list of atoms  [70, 170] --> Bond_70_170
+    Generates a label with the list of atoms  [70, 170] --> Bond_70_170
     '''
     if len(colvar) == 3:
-        label = "Angle_"
+        label = "angle_"
     else:
-        label = "Bond_"
+        label = "bond_"
     lab = '_'.join(str(x) for x in colvar)
     return label + lab
 
@@ -152,7 +154,7 @@ def oscillator_distribution(x, *p):
     return(1 / (np.sqrt(2 * np.pi * kb * temp / k)) * \
         np.exp(-(k / (2 * kb * temp)) * (x - x0)**2))
 
-def plot_everything(hist, colvar, coefficients):
+#def plot_everything(hist, colvar, coefficients):
 
 
 
