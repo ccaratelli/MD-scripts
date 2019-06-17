@@ -24,27 +24,31 @@ def main(file_name, start_step, end_step, temp):
     xyz_file = XYZFile(file_name)
     geometries = xyz_file.geometries[start_step:end_step]
 
-    # Read atom list from input file (input is 1-based indexing)  
+    # Read atom list from input file (input is 1-based indexing)
     with open('atoms.txt', 'r') as f:
         atoms_input = json.load(f)
     atoms = [list(np.array(a) - 1) for a in atoms_input]
 
     # Calculate bonds and angles
     time = (np.arange(geometries.shape[0])) * timestep
-    bonds_angles = [get_bonds_angles(geometries, i) for i in atoms] 
+    bonds_angles = [get_bonds_angles(geometries, i) for i in atoms]
     labels = [convert_label(i) for i in atoms_input]
-    units = ['Angle (rad)' if len(i) == 3 else 'Bond (a.u.)' for i in atoms_input]
+    units = ['Angle (rad)' if len(
+        i) == 3 else 'Bond (a.u.)' for i in atoms_input]
     # Compute histograms and saves results
     for i, qty in enumerate(bonds_angles):
-            all_distr, coefficients = generate_histogram(qty, temp)
-            name = labels[i]
-            unit = units[i]
-            np.savetxt(name + "-hist.dat", all_distr)
-            np.savetxt(name + "-time.dat", np.stack((time, qty)).transpose())
-            np.savetxt(name + "-coeff.dat", coefficients, fmt='%1.3f')
-            plot_all(all_distr, qty, coefficients, name, time, unit) 
+        all_distr, coefficients = generate_histogram(qty, temp)
+        name = labels[i]
+        unit = units[i]
+        np.savetxt(name + "-hist.dat", all_distr)
+        np.savetxt(name + "-time.dat", np.stack((time, qty)).transpose())
+        np.savetxt(name + "-coeff.dat", coefficients, fmt='%1.3f')
+        plot_all(all_distr, qty, coefficients, name, time, unit)
 
-    all_data = pd.DataFrame(data=np.stack(bonds_angles).transpose(), index=time, columns=labels)
+    all_data = pd.DataFrame(
+        data=np.stack(bonds_angles).transpose(),
+        index=time,
+        columns=labels)
     all_data.to_csv("all_data.dat", sep='\t')
 
 
@@ -52,32 +56,32 @@ def plot_all(all_distr, qty, coefficients, name, time, unit):
     """
     Plots all data
     """
-    fig, (p1, p2) = plt.subplots(1, 2, figsize=(12, 3), gridspec_kw={'width_ratios': [3, 1]})
+    fig, (p1, p2) = plt.subplots(1, 2, figsize=(
+        12, 3), gridspec_kw={'width_ratios': [3, 1]})
 
     # Plot with the time evolution
     p1.set_xlabel('Time (ps)')
     p1.set_ylabel(unit)
-    p1.set_title('Evolution of '+name)
-    p1.plot(time*0.001, qty)
-    
-    # Plot with the distribution 
+    p1.set_title('Evolution of ' + name)
+    p1.plot(time * 0.001, qty)
+
+    # Plot with the distribution
     p2.set_xlabel('Distribution')
     p2.axes.get_yaxis().set_visible(False)
-    p2.plot(all_distr[:,1], all_distr[:,0])
-    p2.plot(all_distr[:,2], all_distr[:,0])
+    p2.plot(all_distr[:, 1], all_distr[:, 0])
+    p2.plot(all_distr[:, 2], all_distr[:, 0])
 
-    # Annotate the values for the distribution 
+    # Annotate the values for the distribution
     textstr = '\n'.join((
         r'$\mu=%.2f$' % (coefficients[0]),
         r'$\sigma=%.2f$' % (coefficients[1]),
         r'$k=%.2f$' % (coefficients[2])))
-    p2.text(0.7,0.95, textstr, transform=p2.transAxes, fontsize=11,
+    p2.text(0.7, 0.95, textstr, transform=p2.transAxes, fontsize=11,
             verticalalignment='top', bbox=dict(facecolor='orange', alpha=0.7))
-    
-    plt.tight_layout() 
+
+    plt.tight_layout()
     plt.subplots_adjust(wspace=0.02)
-    plt.savefig(name+".png")
-    
+    plt.savefig(name + ".png")
 
 
 def generate_histogram(colvar, temp):
@@ -96,22 +100,23 @@ def generate_histogram(colvar, temp):
 def fit_gaussian(data, temp, p0=[2, 0.1]):
     """
     Takes histogram and bins of same shape and returns a fitted gaussian distribution
-    and the force constants of the corresponding harmonic oscillator 
+    and the force constants of the corresponding harmonic oscillator
     """
     bins, hist = data[0], data[1]
     coeff, var_matrix = curve_fit(gaussian_distribution, bins, hist, p0=p0)
-    
-    # Fit a gaussian distribution to the bond/angle distribution. 
-    # We fit this distribution and not directly the oscillator distribution because sometimes this fit fails.
+
+    # Fit a gaussian distribution to the bond/angle distribution.
+    # We fit this distribution and not directly the oscillator distribution
+    # because sometimes this fit fails.
     gauss_fit = gaussian_distribution(bins, *coeff)
 
     # Obtain force constant for the oscillator that generates this distribution
-    #append it to the coefficient list. 
+    # append it to the coefficient list.
     # sigma = sqrt(k/2pi kb T)
     kb = boltzmann  # kb in hartree
     k = (temp * kb) / (coeff[1]**2)
     all_coefficients = np.append(coeff, k)
-    
+
     # Check if k replicates the real distribution
     coeff_distr = k, coeff[0], temp
     distr_fit = oscillator_distribution(bins, *coeff_distr)
@@ -134,13 +139,13 @@ def oscillator_distribution(x, *p):
     """
     k, x0, temp = p
     kb = boltzmann
-    return(1 / (np.sqrt(2 * np.pi * kb * temp / k)) * \
-        np.exp(-(k / (2 * kb * temp)) * (x - x0)**2))
+    return(1 / (np.sqrt(2 * np.pi * kb * temp / k)) *
+           np.exp(-(k / (2 * kb * temp)) * (x - x0)**2))
 
 
 def get_bonds_angles(geometries, atoms):
     """
-    This functions takes an array with the geometries, and a list with a group of atoms 
+    This functions takes an array with the geometries, and a list with a group of atoms
     and returns the bond or angle evolution during the simulation
 
     """
@@ -168,7 +173,6 @@ def convert_label(colvar):
     return label + lab
 
 
-
 if __name__ == "__main__":
     msg = "angle_bond -p <path/to/trajectory> -st <start frame> -et <end frame>  -t <temperature>"
     parser = argparse.ArgumentParser(description=msg)
@@ -184,4 +188,3 @@ if __name__ == "__main__":
     parser.add_argument('-t', required=False, default=298, help='temperature')
     args = parser.parse_args()
     main(args.p, args.st, args.et, args.t)
-
