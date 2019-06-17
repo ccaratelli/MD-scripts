@@ -18,6 +18,8 @@ def main(file_name, start_step, end_step, temp):
     of given angles and bonds. Prints force parameters for a harmonic oscillator
     that reproduces the behavior of the each bond/angle
     """
+
+    # Timestep in fs
     timestep = 0.5
 
     # Store the geometries from the trajectory as a numpy array
@@ -30,11 +32,12 @@ def main(file_name, start_step, end_step, temp):
     atoms = [list(np.array(a) - 1) for a in atoms_input]
 
     # Calculate bonds and angles
-    time = (np.arange(geometries.shape[0])) * timestep
+    time = (np.arange(geometries.shape[0]) + 1) * timestep
     bonds_angles = [get_bonds_angles(geometries, i) for i in atoms]
     labels = [convert_label(i) for i in atoms_input]
     units = ['Angle (rad)' if len(
         i) == 3 else 'Bond (a.u.)' for i in atoms_input]
+
     # Compute histograms and saves results
     for i, qty in enumerate(bonds_angles):
         all_distr, coefficients = generate_histogram(qty, temp)
@@ -45,6 +48,7 @@ def main(file_name, start_step, end_step, temp):
         np.savetxt(name + "-coeff.dat", coefficients, fmt='%1.3f')
         plot_all(all_distr, qty, coefficients, name, time, unit)
 
+    # Store in a pandas dataframe for further analysis
     all_data = pd.DataFrame(
         data=np.stack(bonds_angles).transpose(),
         index=time,
@@ -59,13 +63,13 @@ def plot_all(all_distr, qty, coefficients, name, time, unit):
     fig, (p1, p2) = plt.subplots(1, 2, figsize=(
         12, 3), gridspec_kw={'width_ratios': [3, 1]})
 
-    # Plot with the time evolution
+    # Plot with the time evolution of the bond/length
     p1.set_xlabel('Time (ps)')
     p1.set_ylabel(unit)
     p1.set_title('Evolution of ' + name)
     p1.plot(time * 0.001, qty)
 
-    # Plot with the distribution
+    # Plot with the distribution + fit
     p2.set_xlabel('Distribution')
     p2.axes.get_yaxis().set_visible(False)
     p2.plot(all_distr[:, 1], all_distr[:, 0])
@@ -92,12 +96,12 @@ def generate_histogram(colvar, temp):
     hist, bin_edges = np.histogram(colvar, bins=50, density=True)
     bin_centres = (bin_edges[:-1] + bin_edges[1:]) / 2
     histogram = np.stack((bin_centres, hist))
-    gaussian, probdistr, coefficients = fit_gaussian(histogram, temp)
-    all_distr = np.stack((bin_centres, hist, gaussian, probdistr), axis=1)
+    gaussian, osc_distr, coefficients = fit_distribution(histogram, temp)
+    all_distr = np.stack((bin_centres, hist, gaussian, osc_distr), axis=1)
     return all_distr, coefficients
 
 
-def fit_gaussian(data, temp, p0=[2, 0.1]):
+def fit_distribution(data, temp, p0=[2, 0.1]):
     """
     Takes histogram and bins of same shape and returns a fitted gaussian distribution
     and the force constants of the corresponding harmonic oscillator
@@ -105,9 +109,8 @@ def fit_gaussian(data, temp, p0=[2, 0.1]):
     bins, hist = data[0], data[1]
     coeff, var_matrix = curve_fit(gaussian_distribution, bins, hist, p0=p0)
 
-    # Fit a gaussian distribution to the bond/angle distribution.
-    # We fit this distribution and not directly the oscillator distribution
-    # because sometimes this fit fails.
+    # Fit a gaussian distribution to the bond/angle distribution
+    # We do not fit directly the oscillator distribution because sometimes the fit fails
     gauss_fit = gaussian_distribution(bins, *coeff)
 
     # Obtain force constant for the oscillator that generates this distribution
@@ -119,8 +122,8 @@ def fit_gaussian(data, temp, p0=[2, 0.1]):
 
     # Check if k replicates the real distribution
     coeff_distr = k, coeff[0], temp
-    distr_fit = oscillator_distribution(bins, *coeff_distr)
-    return gauss_fit, distr_fit, all_coefficients
+    osc_fit = oscillator_distribution(bins, *coeff_distr)
+    return gauss_fit, osc_fit, all_coefficients
 
 
 def gaussian_distribution(x, *p):
