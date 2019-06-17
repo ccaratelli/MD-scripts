@@ -4,7 +4,6 @@ import pandas as pd
 import argparse
 import matplotlib.pyplot as plt
 from molmod.constants import boltzmann
-from molmod.units import angstrom, deg
 from molmod.io.xyz import XYZFile
 from molmod.ic import bend_angle
 from molmod.ic import bond_length
@@ -15,8 +14,9 @@ import json
 def main(file_name, start_step, end_step, temp):
     """
     Loads molecular geometries, generates file with time evolution
-    of given angles and bonds. Prints force parameters for a harmonic oscillator
-    that reproduces the behavior of the each bond/angle
+    of given angles and bonds. Prints force parameters for a 
+    harmonic oscillator that reproduces the behavior of 
+    each bond/angle to use as input for biased simulations
     """
 
     # Timestep in fs
@@ -29,7 +29,7 @@ def main(file_name, start_step, end_step, temp):
     # Read atom list from input file (input is 1-based indexing)
     with open('atoms.txt', 'r') as f:
         atoms_input = json.load(f)
-    atoms = [list(np.array(a) - 1) for a in atoms_input]
+    atoms = [np.array(a) - 1 for a in atoms_input]
 
     # Calculate bonds and angles
     time = (np.arange(geometries.shape[0]) + 1) * timestep
@@ -56,38 +56,6 @@ def main(file_name, start_step, end_step, temp):
     all_data.to_csv("all_data.dat", sep='\t')
 
 
-def plot_all(all_distr, qty, coefficients, name, time, unit):
-    """
-    Plots all data
-    """
-    fig, (p1, p2) = plt.subplots(1, 2, figsize=(
-        12, 3), gridspec_kw={'width_ratios': [3, 1]})
-
-    # Plot with the time evolution of the bond/length
-    p1.set_xlabel('Time (ps)')
-    p1.set_ylabel(unit)
-    p1.set_title('Evolution of ' + name)
-    p1.plot(time * 0.001, qty)
-
-    # Plot with the distribution + fit
-    p2.set_xlabel('Distribution')
-    p2.axes.get_yaxis().set_visible(False)
-    p2.plot(all_distr[:, 1], all_distr[:, 0])
-    p2.plot(all_distr[:, 2], all_distr[:, 0])
-
-    # Annotate the values for the distribution
-    textstr = '\n'.join((
-        r'$\mu=%.2f$' % (coefficients[0]),
-        r'$\sigma=%.2f$' % (coefficients[1]),
-        r'$k=%.2f$' % (coefficients[2])))
-    p2.text(0.7, 0.95, textstr, transform=p2.transAxes, fontsize=11,
-            verticalalignment='top', bbox=dict(facecolor='orange', alpha=0.7))
-
-    plt.tight_layout()
-    plt.subplots_adjust(wspace=0.02)
-    plt.savefig(name + ".png")
-
-
 def generate_histogram(colvar, temp):
     """
     Calculates a histogram from a quantity evolution during the simulation
@@ -96,8 +64,8 @@ def generate_histogram(colvar, temp):
     hist, bin_edges = np.histogram(colvar, bins=50, density=True)
     bin_centres = (bin_edges[:-1] + bin_edges[1:]) / 2
     histogram = np.stack((bin_centres, hist))
-    gaussian, osc_distr, coefficients = fit_distribution(histogram, temp)
-    all_distr = np.stack((bin_centres, hist, gaussian, osc_distr), axis=1)
+    gaussian_distr, oscillator_distr, coefficients = fit_distribution(histogram, temp)
+    all_distr = np.stack((bin_centres, hist, gaussian_distr, oscillator_distr), axis=1)
     return all_distr, coefficients
 
 
@@ -152,8 +120,7 @@ def get_bonds_angles(geometries, atoms):
     and returns the bond or angle evolution during the simulation
 
     """
-    number_of_steps = geometries.shape[0]
-    number_of_atoms = geometries.shape[1]
+    number_of_steps, number_of_atoms, _ = geometries.shape
     colvar = np.empty(number_of_steps)
     if len(atoms) == 2:
         for frame in range(number_of_steps):
@@ -176,6 +143,38 @@ def convert_label(colvar):
     return label + lab
 
 
+def plot_all(all_distr, qty, coefficients, name, time, unit):
+    """
+    Plots all data
+    """
+    fig, (p1, p2) = plt.subplots(1, 2, figsize=(
+        12, 3), gridspec_kw={'width_ratios': [3, 1]})
+
+    # Plot with the time evolution of the bond/length
+    p1.set_xlabel('Time (ps)')
+    p1.set_ylabel(unit)
+    p1.set_title('Evolution of ' + name)
+    p1.plot(time * 0.001, qty)
+
+    # Plot with the distribution + fit
+    p2.set_xlabel('Distribution')
+    p2.axes.get_yaxis().set_visible(False)
+    p2.plot(all_distr[:, 1], all_distr[:, 0])
+    p2.plot(all_distr[:, 2], all_distr[:, 0])
+
+    # Annotate the values for the distribution
+    textstr = '\n'.join((
+        r'$\mu=%.2f$' % (coefficients[0]),
+        r'$\sigma=%.2f$' % (coefficients[1]),
+        r'$k=%.2f$' % (coefficients[2])))
+    p2.text(0.7, 0.95, textstr, transform=p2.transAxes, fontsize=11,
+            verticalalignment='top', bbox=dict(facecolor='orange', alpha=0.7))
+
+    plt.tight_layout()
+    plt.subplots_adjust(wspace=0.02)
+    plt.savefig(name + ".png")
+
+
 if __name__ == "__main__":
     msg = "angle_bond -p <path/to/trajectory> -st <start frame> -et <end frame>  -t <temperature>"
     parser = argparse.ArgumentParser(description=msg)
@@ -191,3 +190,4 @@ if __name__ == "__main__":
     parser.add_argument('-t', required=False, default=298, help='temperature')
     args = parser.parse_args()
     main(args.p, args.st, args.et, args.t)
+
