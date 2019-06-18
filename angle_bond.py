@@ -156,7 +156,8 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
 
     # Define names for the axes and plots depending on the atoms
     unit = 'Angle (rad)' if len(atoms) == 3 else 'Bond (a.u.)'
-    name = ' '.join(convert_label(atoms).split('_'))
+    namefile = convert_label(atoms)
+    name = ' '.join(namefile)
     
     # Plot with the time evolution of the bond/length
     p1.set_xlabel('Time (ps)')
@@ -180,7 +181,7 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.02)
-    plt.savefig("{}.png".format(name))
+    plt.savefig("{}.png".format(namefile))
 
 if __name__ == "__main__":
     msg = "angle_bond -i <path/to/trajectory> -p <parameter file> -st <start frame> -et <end frame>  -t <temperature>"
