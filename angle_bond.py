@@ -1,6 +1,7 @@
-#!/usr/bin/python
+#!/ur/bin/python
 import numpy as np
 import pandas as pd
+import os
 import argparse
 import matplotlib.pyplot as plt
 from molmod.constants import boltzmann
@@ -11,7 +12,7 @@ from scipy.optimize import curve_fit
 import json
 
 
-def main(file_name, start_step, end_step, temp):
+def main(file_name, parameters, start_step, end_step, temp):
     """
     Loads molecular geometries, generates file with time evolution
     of given angles and bonds. Prints force parameters for a 
@@ -21,13 +22,17 @@ def main(file_name, start_step, end_step, temp):
 
     # Timestep in fs
     timestep = 0.5
+    # Output directory
+    out_dir = "output_txt/"
+    if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
 
     # Store the geometries from the trajectory as a numpy array
     xyz_file = XYZFile(file_name)
     geometries = xyz_file.geometries[start_step:end_step]
 
     # Read atom list from input file (input is 1-based indexing)
-    with open('atoms.txt', 'r') as f:
+    with open(parameters, 'r') as f:
         atoms_input = json.load(f)
     atoms = [np.array(a) - 1 for a in atoms_input]
 
@@ -41,19 +46,18 @@ def main(file_name, start_step, end_step, temp):
     # Compute histograms and saves results
     for i, qty in enumerate(bonds_angles):
         all_distr, coefficients = generate_histogram(qty, temp)
-        name = labels[i]
-        unit = units[i]
-        np.savetxt(name + "-hist.dat", all_distr)
-        np.savetxt(name + "-time.dat", np.stack((time, qty)).transpose())
-        np.savetxt(name + "-coeff.dat", coefficients, fmt='%1.3f')
-        plot_all(all_distr, qty, coefficients, name, time, unit)
 
-    # Store in a pandas dataframe for further analysis
+        np.savetxt("{}{}-hist.dat".format(out_dir, labels[i]), all_distr)
+        np.savetxt("{}{}-time.dat".format(out_dir, labels[i]), np.stack((time, qty)).transpose())
+        np.savetxt("{}{}-coeff.dat".format(out_dir, labels[i]), coefficients, fmt='%1.3f')
+        plot_all(all_distr, qty, coefficients, labels[i], time, units[i])
+
+    # Store in a pandas dataframe for further analysis (to do)
     all_data = pd.DataFrame(
         data=np.stack(bonds_angles).transpose(),
         index=time,
         columns=labels)
-    all_data.to_csv("all_data.dat", sep='\t')
+    all_data.to_csv("{}all_data.dat".format(out_dir), sep='\t')
 
 
 def generate_histogram(colvar, temp):
@@ -153,7 +157,7 @@ def plot_all(all_distr, qty, coefficients, name, time, unit):
     # Plot with the time evolution of the bond/length
     p1.set_xlabel('Time (ps)')
     p1.set_ylabel(unit)
-    p1.set_title('Evolution of ' + name)
+    p1.set_title('Evolution of {}'.format(name))
     p1.plot(time * 0.001, qty)
 
     # Plot with the distribution + fit
@@ -172,13 +176,14 @@ def plot_all(all_distr, qty, coefficients, name, time, unit):
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.02)
-    plt.savefig(name + ".png")
+    plt.savefig("{}.png".format(name))
 
 
 if __name__ == "__main__":
-    msg = "angle_bond -p <path/to/trajectory> -st <start frame> -et <end frame>  -t <temperature>"
+    msg = "angle_bond -i <path/to/trajectory> -p <parameter file> -st <start frame> -et <end frame>  -t <temperature>"
     parser = argparse.ArgumentParser(description=msg)
-    parser.add_argument('-p', required=True, help='path to the xyz trajectory')
+    parser.add_argument('-i', required=True, help='path to the xyz trajectory')
+    parser.add_argument('-p', required=False, default='atoms.txt', help='path to the parameters file')
     parser.add_argument(
         '-st',
         required=False,
@@ -189,5 +194,5 @@ if __name__ == "__main__":
                         1, type=int, help='ending time of the simulation')
     parser.add_argument('-t', required=False, default=298, help='temperature')
     args = parser.parse_args()
-    main(args.p, args.st, args.et, args.t)
+    main(args.i, args.p, args.st, args.et, args.t)
 
