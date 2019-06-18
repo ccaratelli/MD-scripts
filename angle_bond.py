@@ -22,6 +22,7 @@ def main(file_name, parameters, start_step, end_step, temp):
 
     # Timestep in fs
     timestep = 0.5
+
     # Output directory
     out_dir = "output_txt/"
     if not os.path.exists(out_dir):
@@ -40,8 +41,6 @@ def main(file_name, parameters, start_step, end_step, temp):
     time = (np.arange(geometries.shape[0]) + 1) * timestep
     bonds_angles = [get_bonds_angles(geometries, i) for i in atoms]
     labels = [convert_label(i) for i in atoms_input]
-    units = ['Angle (rad)' if len(
-        i) == 3 else 'Bond (a.u.)' for i in atoms_input]
 
     # Compute histograms and saves results
     for i, qty in enumerate(bonds_angles):
@@ -50,7 +49,7 @@ def main(file_name, parameters, start_step, end_step, temp):
         np.savetxt("{}{}-hist.dat".format(out_dir, labels[i]), all_distr)
         np.savetxt("{}{}-time.dat".format(out_dir, labels[i]), np.stack((time, qty)).transpose())
         np.savetxt("{}{}-coeff.dat".format(out_dir, labels[i]), coefficients, fmt='%1.3f')
-        plot_all(all_distr, qty, coefficients, labels[i], time, units[i])
+        plot_all(all_distr, qty, coefficients, atoms_input[i], time)
 
     # Store in a pandas dataframe for further analysis (to do)
     all_data = pd.DataFrame(
@@ -147,13 +146,18 @@ def convert_label(colvar):
     return label + lab
 
 
-def plot_all(all_distr, qty, coefficients, name, time, unit):
+def plot_all(all_distr, qty, coefficients, atoms, time):
     """
-    Plots all data
+    Plots the time evolution and the distribution + fit
     """
+    plt.style.use('default')
     fig, (p1, p2) = plt.subplots(1, 2, figsize=(
         12, 3), gridspec_kw={'width_ratios': [3, 1]})
 
+    # Define names for the axes and plots depending on the atoms
+    unit = 'Angle (rad)' if len(atoms) == 3 else 'Bond (a.u.)'
+    name = convert_label(atoms)
+    
     # Plot with the time evolution of the bond/length
     p1.set_xlabel('Time (ps)')
     p1.set_ylabel(unit)
@@ -172,7 +176,7 @@ def plot_all(all_distr, qty, coefficients, name, time, unit):
         r'$\sigma=%.2f$' % (coefficients[1]),
         r'$k=%.2f$' % (coefficients[2])))
     p2.text(0.7, 0.95, textstr, transform=p2.transAxes, fontsize=11,
-            verticalalignment='top', bbox=dict(facecolor='orange', alpha=0.7))
+            verticalalignment='top', bbox=dict(color='orange',alpha=0.7))
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.02)
