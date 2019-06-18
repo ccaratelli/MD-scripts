@@ -23,12 +23,12 @@ def main(file_name, parameters, start_step, end_step, temp):
     # Timestep in fs
     timestep = 0.5
 
-    # Output directory
+    # Create output directory
     out_dir = "output_txt/"
     if not os.path.exists(out_dir):
             os.makedirs(out_dir)
 
-    # Store the geometries from the trajectory as a numpy array
+    # Create trajectory object and store the geometries in numpy array
     xyz_file = XYZFile(file_name)
     geometries = xyz_file.geometries[start_step:end_step]
 
@@ -93,8 +93,8 @@ def fit_distribution(data, temp, p0=[2, 0.1]):
 
     # Check if k replicates the real distribution
     coeff_distr = k, coeff[0], temp
-    osc_fit = oscillator_distribution(bins, *coeff_distr)
-    return gauss_fit, osc_fit, all_coefficients
+    osc_distr = oscillator_distribution(bins, *coeff_distr)
+    return gauss_fit, osc_distr, all_coefficients
 
 
 def gaussian_distribution(x, *p):
@@ -152,16 +152,16 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
     """
     plt.style.use('default')
     fig, (p1, p2) = plt.subplots(1, 2, figsize=(
-        12, 3), gridspec_kw={'width_ratios': [3, 1]})
+        10, 2.5), gridspec_kw={'width_ratios': [3, 1]})
 
     # Define names for the axes and plots depending on the atoms
     unit = 'Angle (rad)' if len(atoms) == 3 else 'Bond (a.u.)'
-    name = convert_label(atoms)
+    name = ' '.join(convert_label(atoms).split('_'))
     
     # Plot with the time evolution of the bond/length
     p1.set_xlabel('Time (ps)')
     p1.set_ylabel(unit)
-    p1.set_title('Evolution of {}'.format(name))
+    p1.set_title('Time evolution of {}'.format(name))
     p1.plot(time * 0.001, qty)
 
     # Plot with the distribution + fit
@@ -175,13 +175,12 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
         r'$\mu=%.2f$' % (coefficients[0]),
         r'$\sigma=%.2f$' % (coefficients[1]),
         r'$k=%.2f$' % (coefficients[2])))
-    p2.text(0.7, 0.95, textstr, transform=p2.transAxes, fontsize=11,
+    p2.text(0.7, 0.95, textstr, transform=p2.transAxes, fontsize=10,
             verticalalignment='top', bbox=dict(color='orange',alpha=0.7))
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.02)
     plt.savefig("{}.png".format(name))
-
 
 if __name__ == "__main__":
     msg = "angle_bond -i <path/to/trajectory> -p <parameter file> -st <start frame> -et <end frame>  -t <temperature>"
