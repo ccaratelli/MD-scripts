@@ -48,7 +48,7 @@ def main(file_name, parameters, start_step, end_step, temp):
 
         np.savetxt("{}{}-hist.dat".format(out_dir, labels[i]), all_distr)
         np.savetxt("{}{}-time.dat".format(out_dir, labels[i]), np.stack((time, qty)).transpose())
-        np.savetxt("{}{}-coeff.dat".format(out_dir, labels[i]), coefficients, fmt='%1.3f')
+        np.savetxt("{}{}-coeff.dat".format(out_dir, labels[i]), coefficients, fmt='%1.3f', header='x0, sigma, k, R2')
         plot_all(all_distr, qty, coefficients, atoms_input[i], time)
 
     # Store in a pandas dataframe for further analysis (to do)
@@ -89,7 +89,14 @@ def fit_distribution(data, temp, p0=[2, 0.1]):
     # sigma = sqrt(k/2pi kb T)
     kb = boltzmann  # kb in hartree
     k = (temp * kb) / (coeff[1]**2)
-    all_coefficients = np.append(coeff, k)
+
+    # Calculate R^2
+    residuals = hist - gauss_fit
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum((hist - np.mean(hist))**2)
+    r_squared = 1 - (ss_res / ss_tot)
+
+    all_coefficients = np.append(coeff, [k, r_squared])
 
     # Check if k replicates the real distribution
     coeff_distr = k, coeff[0], temp
@@ -157,7 +164,7 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
     # Define names for the axes and plots depending on the atoms
     unit = 'Angle (rad)' if len(atoms) == 3 else 'Bond (a.u.)'
     namefile = convert_label(atoms)
-    name = ' '.join(namefile)
+    name = ' '.join(namefile.split('_'))
     
     # Plot with the time evolution of the bond/length
     p1.set_xlabel('Time (ps)')
@@ -182,6 +189,7 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.02)
     plt.savefig("{}.png".format(namefile))
+
 
 if __name__ == "__main__":
     msg = "angle_bond -i <path/to/trajectory> -p <parameter file> -st <start frame> -et <end frame>  -t <temperature>"
