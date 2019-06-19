@@ -15,8 +15,8 @@ import json
 def main(file_name, parameters, start_step, end_step, temp):
     """
     Loads molecular geometries, generates file with time evolution
-    of given angles and bonds. Prints force parameters for a 
-    harmonic oscillator that reproduces the behavior of 
+    of given angles and bonds. Prints force parameters for a
+    harmonic oscillator that reproduces the behavior of
     each bond/angle to use as input for biased simulations
     """
 
@@ -26,7 +26,7 @@ def main(file_name, parameters, start_step, end_step, temp):
     # Create output directory
     out_dir = "output_txt/"
     if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
+        os.makedirs(out_dir)
 
     # Create trajectory object and store the geometries in numpy array
     xyz_file = XYZFile(file_name)
@@ -47,8 +47,13 @@ def main(file_name, parameters, start_step, end_step, temp):
         all_distr, coefficients = generate_histogram(qty, temp)
 
         np.savetxt("{}{}-hist.dat".format(out_dir, labels[i]), all_distr)
-        np.savetxt("{}{}-time.dat".format(out_dir, labels[i]), np.stack((time, qty)).transpose())
-        np.savetxt("{}{}-coeff.dat".format(out_dir, labels[i]), coefficients, fmt='%1.3f', header='x0, sigma, k, R2')
+        np.savetxt("{}{}-time.dat".format(out_dir,
+                                          labels[i]), np.stack((time, qty)).transpose())
+        np.savetxt("{}{}-coeff.dat".format(out_dir,
+                                           labels[i]),
+                   coefficients,
+                   fmt='%1.3f',
+                   header='x0, sigma, k, R2')
         plot_all(all_distr, qty, coefficients, atoms_input[i], time)
 
     # Store in a pandas dataframe for further analysis (to do)
@@ -67,8 +72,14 @@ def generate_histogram(colvar, temp):
     hist, bin_edges = np.histogram(colvar, bins=50, density=True)
     bin_centres = (bin_edges[:-1] + bin_edges[1:]) / 2
     histogram = np.stack((bin_centres, hist))
-    gaussian_distr, oscillator_distr, coefficients = fit_distribution(histogram, temp)
-    all_distr = np.stack((bin_centres, hist, gaussian_distr, oscillator_distr), axis=1)
+    gaussian_distr, oscillator_distr, coefficients = fit_distribution(
+        histogram, temp)
+    all_distr = np.stack(
+        (bin_centres,
+         hist,
+         gaussian_distr,
+         oscillator_distr),
+        axis=1)
     return all_distr, coefficients
 
 
@@ -81,7 +92,8 @@ def fit_distribution(data, temp, p0=[2, 0.1]):
     coeff, var_matrix = curve_fit(gaussian_distribution, bins, hist, p0=p0)
 
     # Fit a gaussian distribution to the bond/angle distribution
-    # We do not fit directly the oscillator distribution because sometimes the fit fails
+    # We do not fit directly the oscillator distribution because sometimes the
+    # fit fails
     gauss_fit = gaussian_distribution(bins, *coeff)
 
     # Obtain force constant for the oscillator that generates this distribution
@@ -165,7 +177,7 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
     unit = 'Angle (rad)' if len(atoms) == 3 else 'Bond (a.u.)'
     namefile = convert_label(atoms)
     name = ' '.join(namefile.split('_'))
-    
+
     # Plot with the time evolution of the bond/length
     p1.set_xlabel('Time (ps)')
     p1.set_ylabel(unit)
@@ -184,7 +196,7 @@ def plot_all(all_distr, qty, coefficients, atoms, time):
         r'$\sigma=%.2f$' % (coefficients[1]),
         r'$k=%.2f$' % (coefficients[2])))
     p2.text(0.7, 0.95, textstr, transform=p2.transAxes, fontsize=10,
-            verticalalignment='top', bbox=dict(color='orange',alpha=0.7))
+            verticalalignment='top', bbox=dict(color='orange', alpha=0.7))
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.02)
@@ -195,7 +207,11 @@ if __name__ == "__main__":
     msg = "angle_bond -i <path/to/trajectory> -p <parameter file> -st <start frame> -et <end frame>  -t <temperature>"
     parser = argparse.ArgumentParser(description=msg)
     parser.add_argument('-i', required=True, help='path to the xyz trajectory')
-    parser.add_argument('-p', required=False, default='atoms.txt', help='path to the parameters file')
+    parser.add_argument(
+        '-p',
+        required=False,
+        default='atoms.txt',
+        help='path to the parameters file')
     parser.add_argument(
         '-st',
         required=False,
@@ -207,4 +223,3 @@ if __name__ == "__main__":
     parser.add_argument('-t', required=False, default=298, help='temperature')
     args = parser.parse_args()
     main(args.i, args.p, args.st, args.et, args.t)
-
